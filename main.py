@@ -8,7 +8,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_ollama import ChatOllama
 
 
-loader = PyPDFLoader('Introduction-to-AI-and-Basic-Concepts.pdf')
+loader = PyPDFLoader('data/Introduction-to-AI-and-Basic-Concepts.pdf')
 documents = loader.load()
 
 
