@@ -6,7 +6,27 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_ollama import ChatOllama
+from langchain_core.prompts import ChatPromptTemplate
 
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+prompt = ChatPromptTemplate.from_template("""
+You are a helpful AI assistant.
+
+Use ONLY the provided context to answer the question.
+
+If the answer cannot be found in the context, say:
+"I don't know based on the provided document."
+
+Context:
+{context}
+
+Question:
+{question}
+
+Answer:
+""")
 
 loader = PyPDFLoader('data/Introduction-to-AI-and-Basic-Concepts.pdf')
 documents = loader.load()
@@ -36,4 +56,21 @@ question = "What is Gradient Descent?"
 
 chunks = retreiver.invoke(question)
 
-print(chunks)
+llm = ChatOllama(
+    model = "llama3.2",
+    temperature=0
+)
+
+rag_chain = (
+    {
+        "context": retreiver | format_docs,
+        "question": RunnablePassthrough()
+    }
+    | prompt
+    | llm
+    | StrOutputParser()
+)
+
+results = rag_chain.invoke(question)
+
+print(results)
