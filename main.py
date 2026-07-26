@@ -34,51 +34,64 @@ Answer:
 """)
 
 loader = PyPDFLoader('data/Introduction-to-AI-and-Basic-Concepts.pdf')
-documents = loader.load()
+docs = loader.load()
 
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size = 500,
-    chunk_overlap  = 50
+r_splitter = RecursiveCharacterTextSplitter(
+    chunk_size = 400,
+    chunk_overlap = 40
 )
 
-chunks = text_splitter.split_documents(documents)
+chunks = r_splitter.split_documents(docs)
+
+print(len(chunks))
 
 embeddings = HuggingFaceEmbeddings(
-    model_name="BAAI/bge-small-en-v1.5"
+    model_name = 'BAAI/bge-small-en-v1.5'
 )
 
-vector_db = Chroma.from_documents(
-    documents=chunks,
-    embedding=embeddings,
-    persist_directory='./chroma_db'
+persist_directory = "./vector_store"
+
+if not os.path.exists(persist_directory):
+    print("Creating vector database...")
+
+    vector_db = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        persist_directory=persist_directory
+    )
+
+else:
+    print("Loading existing vector database...")
+
+    vector_db = Chroma(
+        persist_directory=persist_directory,
+        embedding_function=embeddings
+    )
+
+
+retriever = vector_db.as_retriever(
+    search_type = "mmr",
+    search_kwargs = {
+        "k" : 3,
+        "fetch_k" : 10
+    }
 )
-
-retreiver = vector_db.as_retriever(
-    search_kwargs = {"k":3}
-)
-
-question = "Which field contributed Bayes Rule to AI?"
-
-chunks = retreiver.invoke(question)
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-3.6-flash",
+    model= "gemini-3.6-flash"
 )
 
+question = "What is Narrow AI explain in simple words?"
 
-docs = retreiver.invoke(question)
+res = retriever.invoke(question)
 
-print(f"Retrieved {len(docs)} documents\n")
-
-for i, doc in enumerate(docs):
-    print(f"========== Chunk {i+1} ==========")
-    print(doc.page_content)
-    print()
+for r in res:
+    print(r.page_content)
 
 rag_chain = (
     {
-        "context": retreiver | format_docs,
-        "question": RunnablePassthrough()
+        'context': retriever | format_docs,
+        'question': RunnablePassthrough()
     }
     | prompt
     | llm
