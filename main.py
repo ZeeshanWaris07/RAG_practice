@@ -7,6 +7,11 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
@@ -52,14 +57,23 @@ retreiver = vector_db.as_retriever(
     search_kwargs = {"k":3}
 )
 
-question = "What is Gradient Descent?"
+question = "Which field contributed Bayes Rule to AI?"
 
 chunks = retreiver.invoke(question)
 
-llm = ChatOllama(
-    model = "llama3.2",
-    temperature=0
+llm = ChatGoogleGenerativeAI(
+    model="gemini-3.6-flash",
 )
+
+
+docs = retreiver.invoke(question)
+
+print(f"Retrieved {len(docs)} documents\n")
+
+for i, doc in enumerate(docs):
+    print(f"========== Chunk {i+1} ==========")
+    print(doc.page_content)
+    print()
 
 rag_chain = (
     {
